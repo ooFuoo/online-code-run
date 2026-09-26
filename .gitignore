@@ -1,5 +1,33 @@
+# Dependencies and package-manager caches
+node_modules/
+.pnpm-store/
+.npm/
+
+# Build, test, and tool output
+dist/
+dist-ssr/
+coverage/
+.cache/
+.vite/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+*.timestamp-*-*.mjs
+/cypress/videos/
+/cypress/screenshots/
+/playwright-report/
+/test-results/
+__screenshots__/
+
+# Local environment files (keep shareable examples)
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.local
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,33 +35,33 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-.DS_Store
-dist
-dist-ssr
-coverage
-*.local
+# Local secrets, certificates, and databases
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.sqlite
+*.sqlite3
+*.db
 
-# Editor directories and files
+# Editor and IDE files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*~
 
-*.tsbuildinfo
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini
 
-.eslintcache
-
-# Cypress
-/cypress/videos/
-/cypress/screenshots/
-
-# Vitest
-__screenshots__/
-
-# Vite
-*.timestamp-*-*.mjs
+# Temporary files
+*.tmp
+*.temp

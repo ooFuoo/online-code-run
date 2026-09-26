@@ -6,6 +6,10 @@ const props = defineProps({
   modelValue: {
     type: String,
     default: ''
+  },
+  language:{
+    type:String,
+    default:'html'
   }
 })
 const emit = defineEmits(['update:modelValue'])
@@ -18,7 +22,7 @@ let editor = null
 onMounted(() => {
   editor = monaco.editor.create(container.value, {
     value: props.modelValue,
-    language: 'html'
+    language: props.language
   })
 
   editor.onDidChangeModelContent(() => {
@@ -38,7 +42,7 @@ onBeforeUnmount(() => {
 <style scoped>
 
 .editor {
-  /* width: 40%; */
+  width: 700px;
   height: 50vh;
   border: 3px solid black;
 }

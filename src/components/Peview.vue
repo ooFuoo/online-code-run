@@ -1,10 +1,10 @@
 <template>
-  <iframe :srcdoc="code" class="preview" frameborder="0"></iframe>
+  <iframe :srcdoc="previewCode" class="preview" frameborder="0"></iframe>
 </template>
 
 <script setup>
 defineProps({
-  code: {
+  previewCode: {
     type: String,
     default: ''
   }
@@ -14,8 +14,8 @@ defineProps({
 
 <style scoped>
 .preview {
-  width: 50%;
-  height: 300px;
+  width: 700px;
+  height: 50vh;
   border: 3px solid black ;
   background-color: aliceblue;
 }
