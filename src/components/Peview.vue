@@ -1,14 +1,13 @@
 <template>
-  <iframe :srcdoc="previewCode" class="preview" frameborder="0"></iframe>
+  <iframe :srcdoc="Code" class="preview" frameborder="0"></iframe>
 </template>
 
 <script setup>
 defineProps({
-  previewCode: {
+  Code: {
     type: String,
     default: ''
   }
-
 })
 </script>
 
