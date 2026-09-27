@@ -1,15 +1,25 @@
 <template>
-  <iframe :srcdoc="Code" class="preview" frameborder="0"
+  <iframe :srcdoc="Code" :key="iframekey" class="preview" frameborder="0"
     sandbox="allow-scripts allow-modals allow-forms allow-popups"></iframe>
 </template>
 
 <script setup>
+import { ref, watch } from 'vue';
+
 defineProps({
   Code: {
     type: String,
     default: ''
   }
 })
+
+const iframekey = ref(0)
+
+function reload() {
+  iframekey.value++
+}
+defineExpose({ reload })
+
 </script>
 
 <style scoped>

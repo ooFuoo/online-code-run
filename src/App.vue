@@ -14,7 +14,7 @@
     </div>
 
     <div class="preview">
-      <Preview :Code="Code"></Preview>
+      <Preview :Code="Code" ref="previewRef"></Preview>
     </div>
     <div class="logs">
       <Console :logs="consoleList" @clear="consoleList = []"></Console>
@@ -62,16 +62,38 @@ console.error('错误')
 // 初始渲染时直接生成预览，避免首次打开为空白
 const Code = ref('')
 const consoleList = ref([])
+let runtimer = null
+const previewRef = ref(null)
+let runID = 0
 
 function runCode() {
+  runID++
+  let currentRunId = runID
+
+  clearTimeout(runtimer)
+  // 1.先清除旧定时器
+
+  // ② 生成新代码
   Code.value = buildPreview(
     htmlcode.value,
     csscode.value,
     jscode.value
   )
+
+  // 3. 先让旧 iframe 失效
+  previewRef.value?.reload()
+  
+  // 4. 5 秒后检查有没有执行完成.先清除旧定时器，在创建新定时器
+  runtimer = setTimeout(() => {
+    if (currentRunId !== runID) return
+    consoleList.value.push({
+      level: 'error',
+      args: ['代码执行超时，可能存在死循环']
+    })
+  }, 5000)
+
 }
 
-runCode()
 
 // 防抖
 const autorun = debounce(runCode, 500)
@@ -100,6 +122,9 @@ const handleMessage = (event) => {
       ],
       stack: event.data.stack
     })
+  }
+  if (event.data?.type === 'execution-complete') {
+    clearTimeout(runtimer)
   }
 }
 
