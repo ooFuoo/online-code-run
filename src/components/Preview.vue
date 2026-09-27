@@ -1,5 +1,6 @@
 <template>
-  <iframe :srcdoc="Code" class="preview" frameborder="0"></iframe>
+  <iframe :srcdoc="Code" class="preview" frameborder="0"
+    sandbox="allow-scripts allow-modals allow-forms allow-popups"></iframe>
 </template>
 
 <script setup>

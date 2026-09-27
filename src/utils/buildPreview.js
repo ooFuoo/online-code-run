@@ -1,4 +1,8 @@
 export function buildPreview(html,css,js){
+
+ const safeJs = js.replace(/<\/script>/gi, '<\\/script>')
+  const safeHtml = html.replace(/<\/script>/gi, '&lt;/script&gt;')
+
   return `
 <!DOCTYPE html>
   <html lang="zh-CN">
@@ -10,7 +14,7 @@ export function buildPreview(html,css,js){
       </style>
     </head>
       <body>
-          ${html}
+           ${safeHtml}
         <script>
 const methods = ['log', 'warn', 'error']
 methods.forEach(method => {
@@ -63,7 +67,7 @@ window.addEventListener('unhandledrejection', (e) => {
   } catch (e) {}
 })
 
-          ${js}
+           ${safeJs}
         <\/script>
       </body>
   </html>`
