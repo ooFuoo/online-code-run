@@ -42,7 +42,7 @@ onBeforeUnmount(() => {
 <style scoped>
 
 .editor {
-  width: 700px;
+  width: 400px;
   height: 50vh;
   border: 3px solid black;
 }

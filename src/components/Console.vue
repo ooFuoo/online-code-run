@@ -26,8 +26,10 @@ function clear() {
 
 <style scoped>
 .args {
-  width: 500px;
+  width: 100%;
   height: 200px;
   border: 2px solid black;
+  box-sizing: border-box;
+  overflow: scroll;
 }
 </style>

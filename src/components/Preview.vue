@@ -13,9 +13,12 @@ defineProps({
 
 <style scoped>
 .preview {
-  width: 700px;
-  height: 50vh;
-  border: 3px solid black ;
+  width: 100%;
+  height: 33vh;
+  min-height: 220px;
+  border: 3px solid black;
   background-color: aliceblue;
+  box-sizing: border-box;
+  display: block;
 }
 </style>
