@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount, onUpdated } from 'vue'
+import { ref, onMounted, onBeforeUnmount} from 'vue'
 import * as monaco from 'monaco-editor'
 
 const props = defineProps({
@@ -10,6 +10,10 @@ const props = defineProps({
   language:{
     type:String,
     default:'html'
+  },
+  title:{
+    type:String,
+    default:''
   }
 })
 const emit = defineEmits(['update:modelValue'])
@@ -36,7 +40,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="container" class="editor"></div>
+  <div ref="container" class="editor">
+    <span class="langname">{{ title }}</span>
+    <!-- <span>{{ language }}</span> -->
+  </div>
 </template>
 
 <style scoped>
@@ -45,5 +52,9 @@ onBeforeUnmount(() => {
   width: 400px;
   height: 50vh;
   border: 3px solid black;
+  margin: 5px;
+}
+.langname{
+  background-color: #b6bbeb;
 }
 </style>

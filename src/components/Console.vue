@@ -31,5 +31,6 @@ function clear() {
   border: 2px solid black;
   box-sizing: border-box;
   overflow: scroll;
+  /* margin: 10px; */
 }
 </style>
