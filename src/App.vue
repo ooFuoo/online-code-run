@@ -92,7 +92,7 @@ function runCode() {
     jscode.value
   )
 
-  // 3. 先让旧 iframe 失效
+  // 3.销毁旧 iframe，然后创建新的 iframe 并执行代码
   previewRef.value?.reload()
 
   // 4. 5 秒后检查有没有执行完成.先清除旧定时器，在创建新定时器
@@ -100,9 +100,12 @@ function runCode() {
     if (currentRunId !== runID) return
     pushlog({
       level: 'error',
-      args: ['代码执行超时，可能存在死循环']
+      args: ['代码执行超时，可能存在死循环,请重新检查代码']
     })
-  }, 5000)
+    // 超时后销毁旧iframe，不创建新
+    previewRef.value?.destory()
+    runtimer=null
+  }, 3000)
 }
 
 // 防抖后自动保存代码
@@ -129,8 +132,14 @@ watch([htmlcode, jscode, csscode], () => {
   autosave()
 })
 
+// 一加载就读取localStorege中的，不运行
 onMounted(() => {
-  runCode()
+  // runCode()
+  Code.value=buildPreview(
+     htmlcode.value,
+    csscode.value,
+    jscode.value
+  )
 })
 
 const handleMessage = (event) => {

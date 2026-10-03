@@ -1,10 +1,20 @@
 <template>
-  <iframe :srcdoc="Code" :key="iframekey" class="preview" frameborder="0"
-    sandbox="allow-scripts allow-modals allow-forms allow-popups allow-same-origin"></iframe>
+   <div class="preview-box">
+    <span v-if="isDestroyed">点击运行查看预览</span>
+    <iframe 
+      v-else="!isDestroyed"
+      :srcdoc="Code"
+      :key="iframekey"
+      class="preview"
+      frameborder="0"
+      sandbox="allow-scripts allow-modals allow-forms allow-popups">
+    </iframe>
+   </div>
+  
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref } from 'vue';
 
 defineProps({
   Code: {
@@ -14,16 +24,23 @@ defineProps({
 })
 
 const iframekey = ref(0)
+const isDestroyed = ref(false)
 
 function reload() {
+  isDestroyed.value = false
   iframekey.value++
 }
-defineExpose({ reload })
+
+function destory() {
+  isDestroyed.value = true
+}
+
+defineExpose({ reload, destory })
 
 </script>
 
 <style scoped>
-.preview {
+.preview-box {
   width: 100%;
   height: 33vh;
   min-height: 220px;
