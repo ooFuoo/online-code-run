@@ -2,7 +2,7 @@
    <div class="preview-box">
     <span v-if="isDestroyed">点击运行查看预览</span>
     <iframe 
-      v-else="!isDestroyed"
+      v-else
       :srcdoc="Code"
       :key="iframekey"
       class="preview"
@@ -31,11 +31,11 @@ function reload() {
   iframekey.value++
 }
 
-function destory() {
+function destroy() {
   isDestroyed.value = true
 }
 
-defineExpose({ reload, destory })
+defineExpose({ reload, destroy })
 
 </script>
 

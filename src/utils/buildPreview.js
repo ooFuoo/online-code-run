@@ -1,4 +1,4 @@
-export function buildPreview(html, css, js) {
+export function buildPreview(html, css, js, runId = 0) {
 
   const safeJs = js.replace(/<\/script>/gi, '<\\/script>')
   const safeHtml = html.replace(/<\/script>/gi, '&lt;/script&gt;')
@@ -16,6 +16,7 @@ export function buildPreview(html, css, js) {
     <body>
       ${safeHtml}
       <script>
+       const RUN_ID = ${JSON.stringify(runId)}
         const methods = ['log', 'warn', 'error']
 methods.forEach(method => {
   const original = console[method]
@@ -23,6 +24,7 @@ methods.forEach(method => {
     try {
           window.parent.postMessage({
             type: 'console',
+             runId: RUN_ID,
             level: method,
             args: args.map(a => {
               try { return JSON.parse(JSON.stringify(a)) }
@@ -41,6 +43,7 @@ window.onerror = (message, source, line, column, error) => {
   try {
           window.parent.postMessage({
             type: 'runtime-error',
+             runId: RUN_ID,
             kind: 'error',
             message: String(message),
             source: source || '',
@@ -57,6 +60,7 @@ window.addEventListener('unhandledrejection', (e) => {
   try {
           window.parent.postMessage({
             type: 'runtime-error',
+             runId: RUN_ID,
             kind: 'unhandledrejection',
             message: e.reason?.message || String(e.reason),
             source: '',
@@ -70,7 +74,8 @@ window.addEventListener('unhandledrejection', (e) => {
         ${safeJs}
         // 执行完发消息
         window.parent.postMessage({
-          type:'execution-complete'
+          type:'execution-complete',
+           runId: RUN_ID,
      },'*')
 
         <\/script>

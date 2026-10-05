@@ -1,21 +1,18 @@
 <template>
+  <FileTree :files="files" :activeFileId="activeFileId" @select="activeFileId = $event" />
+
   <div class="container">
+
     <button @click="runCode">运行</button>
-    <div class="html-editor">
-      <CodeEditor v-model="htmlcode" language="html" title="HTML"></CodeEditor>
-    </div>
 
-    <div class="css-editor">
-      <CodeEditor v-model="csscode" language="css" title="CSS"></CodeEditor>
-    </div>
-
-    <div class="js-editor">
-      <CodeEditor v-model="jscode" language="javascript" title="JavaScript"></CodeEditor>
-    </div>
+    <CodeEditor v-if="activeFile" :key="activeFile.id" v-model="activeFile.content" :language="activeFile.language"
+      :title="activeFile.name">
+    </CodeEditor>
 
     <div class="preview">
       <Preview :Code="Code" ref="previewRef"></Preview>
     </div>
+
     <div class="logs">
       <Console :logs="consoleList" @clear="consoleList = []"></Console>
     </div>
@@ -23,53 +20,49 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import CodeEditor from './components/CodeEditor.vue';
 import Preview from './components/Preview.vue';
 import Console from './components/Console.vue';
+import FileTree from './components/FileTree.vue';
 
 import { buildPreview } from './utils/buildPreview'
 import { debounce } from './utils/debounce'
-import { saveCode, loadCode } from './utils/storage'
+import { saveFiles, loadCode } from './utils/storage'
+
 
 const savedCode = loadCode()
 
-const htmlcode = ref(savedCode?.html ??
-  `<h2>默认标签样式页面</h2>
-<h1 id="title">Hello World</h1>
-<div class="contain">盒子one</div>`)
-const csscode = ref(savedCode?.css ??
-  `#title {
-    color: red;
-    cursor: pointer;
-      background-color: pink;
-  }
-  .contain{
-     background-color: aliceblue;
-  }`)
-const jscode = ref(savedCode?.js ??
-  ` console.log("默认打印")
-    console.log('Hello Console')
-    console.log(123)
-    console.log('普通日志')
-    console.warn('警告')
-    console.error('错误')
-  const title = document.querySelector('#title')
-  if (title) {
-    title.onclick = function () {
-      console.log('点击成功！')
-      alert('点击成功！')
-    }
-  }
-  `)
-
-// 初始渲染时直接生成预览，避免首次打开为空白
 const Code = ref('')
 const consoleList = ref([])
 let runtimer = null
 const previewRef = ref(null)
 let runID = 0
 const maxLogs = 200
+
+
+
+if (Array.isArray(savedCode)) {
+  files.value = savedCode
+}
+
+const activeFileId = ref(files.value[0]?.id ?? null)
+
+const htmlFile = computed(() => files.value.find(
+  file => file.name === 'index.html'
+))
+const cssFile = computed(() => files.value.find(
+  file => file.language === 'css'
+))
+const jsFile = computed(() => files.value.find(
+  file => file.language === 'javascript'
+))
+
+// 一加载就读取localStorege中的，不运行
+const activeFile = computed(() => {
+  return files.value.find(file => file.id === activeFileId.value)
+    ?? files.value[0]
+})
 
 function pushlog(log) {
   consoleList.value.push(log)
@@ -83,19 +76,23 @@ function runCode() {
   runID++
   const currentRunId = runID
   clearTimeout(runtimer)
-  // 1.先清除旧定时器
+  runtimer = null
 
-  // ② 生成新代码
+  // 清空旧日志
+  consoleList.value = []
+
+
   Code.value = buildPreview(
-    htmlcode.value,
-    csscode.value,
-    jscode.value
+    htmlFile.value?.content ?? '',
+    cssFile.value?.content ?? '',
+    jsFile.value?.content ?? '',
+    currentRunId
   )
 
   // 3.销毁旧 iframe，然后创建新的 iframe 并执行代码
   previewRef.value?.reload()
 
-  // 4. 5 秒后检查有没有执行完成.先清除旧定时器，在创建新定时器
+  // 3 秒后检查有没有执行完成
   runtimer = setTimeout(() => {
     if (currentRunId !== runID) return
     pushlog({
@@ -103,19 +100,14 @@ function runCode() {
       args: ['代码执行超时，可能存在死循环,请重新检查代码']
     })
     // 超时后销毁旧iframe，不创建新
-    previewRef.value?.destory()
-    runtimer=null
+    previewRef.value?.destroy()
+    runtimer = null
   }, 3000)
 }
 
 // 防抖后自动保存代码
 const autosave = debounce(() => {
-  const success = saveCode(
-    {
-      html: htmlcode.value,
-      css: csscode.value,
-      js: jscode.value
-    })
+  const success = saveFiles(files.value)
 
   if (!success) {
     pushlog({
@@ -127,46 +119,54 @@ const autosave = debounce(() => {
 
 // 防抖
 const autorun = debounce(runCode, 500)
-watch([htmlcode, jscode, csscode], () => {
+watch(files, () => {
   autorun()
   autosave()
-})
+}, { deep: true })
 
-// 一加载就读取localStorege中的，不运行
 onMounted(() => {
-  // runCode()
-  Code.value=buildPreview(
-     htmlcode.value,
-    csscode.value,
-    jscode.value
+  window.addEventListener('message', handleMessage)
+
+  Code.value = buildPreview(
+    htmlFile.value?.content ?? '',
+    cssFile.value?.content ?? '',
+    jsFile.value?.content ?? '',
+    runID
   )
 })
 
 const handleMessage = (event) => {
-  if (event.data?.type === 'console') {
+  const message = event.data
+  if (!message || message.runId !== runID) return
+
+  if (message.type === 'console') {
     pushlog({
-      level: event.data.level,
-      args: event.data.args
+      level: message.level,
+      args: message.args
     })
   }
 
-  if (event.data?.type === 'runtime-error') {
+  if (message.type === 'runtime-error') {
     pushlog({
       level: 'error',
       args: [
-        `[${event.data.kind}] ${event.data.message}` +
-        (event.data.source ? ` (${event.data.source}:${event.data.line}:${event.data.column})` : '')
+        `[${message.kind}] ${message.message}` +
+        (message.source ? ` (${message.source}:${message.line}:${message.column})` : '')
       ],
-      stack: event.data.stack
+      stack: message.stack
     })
   }
-  if (event.data?.type === 'execution-complete') {
+  if (message.type === 'execution-complete') {
     clearTimeout(runtimer)
+    runtimer = null
   }
 }
 
-window.addEventListener('message', handleMessage)
+
 onBeforeUnmount(() => {
+  clearTimeout(runtimer)
+  autorun.cancel()
+  autosave.cancel()
   window.removeEventListener('message', handleMessage)
 })
 </script>
@@ -198,5 +198,16 @@ onBeforeUnmount(() => {
 
 .logs {
   grid-column: 1 / -1;
+}
+
+@media (max-width: 700px) {
+  .container {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .preview {
+    grid-column: 1;
+    grid-row: auto;
+  }
 }
 </style>

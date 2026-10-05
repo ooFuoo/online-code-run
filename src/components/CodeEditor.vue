@@ -49,10 +49,11 @@ onBeforeUnmount(() => {
 <style scoped>
 
 .editor {
-  width: 400px;
+  width: 100%;
+  min-width: 0;
   height: 50vh;
   border: 3px solid black;
-  margin: 5px;
+  box-sizing: border-box;
 }
 .langname{
   background-color: #b6bbeb;

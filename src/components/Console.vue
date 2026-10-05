@@ -11,7 +11,7 @@
 </template>
 
 <script setup>
-const props = defineProps({
+defineProps({
   logs: {
     type: Array,
     default: () => []
@@ -21,6 +21,17 @@ const props = defineProps({
 const emit = defineEmits(['clear'])
 function clear() {
   emit('clear')
+}
+
+function formatArgs(args) {
+  return (Array.isArray(args) ? args : [args]).map(arg => {
+    if (typeof arg === 'string') return arg
+    try {
+      return JSON.stringify(arg)
+    } catch {
+      return String(arg)
+    }
+  }).join(' ')
 }
 </script>
 
