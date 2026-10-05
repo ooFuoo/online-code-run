@@ -96,6 +96,10 @@ export function useCodeRunner({
     consoleList.value = []
   }
 
+  function addLog(level, args) {
+    pushlog({ level, args: Array.isArray(args) ? args : [args] })
+  }
+
   function destroy() {
     clearTimeout(runtimer)
     runtimer = null
@@ -112,6 +116,7 @@ export function useCodeRunner({
     consoleList,
     runCode,
     handleMessage,
-    clearLogs
+    clearLogs,
+    addLog
   }
 }

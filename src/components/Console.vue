@@ -4,7 +4,7 @@
     <button @click="clear">清空</button>
     <div v-for="(item, index) in logs" :key="index" class="console-item">
       <span>{{ item.level }}</span>
-      <span>{{ item.args }}</span>
+      <span>{{ formatArgs(item.args) }}</span>
     </div>
 
   </div>

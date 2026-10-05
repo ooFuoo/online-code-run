@@ -1,5 +1,6 @@
 <template>
-  <FileTree :files="files" :activeFileId="activeFileId" @select="activeFileId = $event" />
+  <FileTree :files="files" :activeFileId="activeFileId" @select="activeFileId = $event" @create="handleCreateFile"
+    @delete="handleDeleteFile" @rename="handleRenameFile" />
 
   <div class="container">
 
@@ -30,8 +31,41 @@ import { useProjectFiles } from './composables/useProjectFiles'
 import { useCodeRunner } from './composables/useCodeRunner'
 
 const previewRef = ref(null)
-const { files, activeFileId, activeFile, htmlFile, cssFile, jsFile } = useProjectFiles()
-const { Code, consoleList, runCode, handleMessage, clearLogs } = useCodeRunner({ htmlFile, cssFile, jsFile, previewRef })
+const { files, activeFileId, activeFile, htmlFile, cssFile, jsFile, createFile, deleteFile, renameFile } = useProjectFiles()
+const { Code, consoleList, runCode, handleMessage, clearLogs, addLog } = useCodeRunner({ htmlFile, cssFile, jsFile, previewRef })
+
+function handleCreateFile(name) {
+  const result = createFile(name)
+
+  if (!result.success) {
+    alert(result.message)
+    return
+  }
+
+  addLog('info', result.message)
+}
+
+function handleDeleteFile(id) {
+  const result = deleteFile(id)
+
+  if (!result.success) {
+    alert(result.message)
+    return
+  }
+
+  addLog('info', result.message)
+}
+
+function handleRenameFile(id, name) {
+  const result = renameFile(id, name)
+
+  if (!result.success) {
+    alert(result.message)
+    return
+  }
+
+  addLog('info', '文件重命名成功')
+}
 
 onMounted(() => {
   window.addEventListener('message', handleMessage)

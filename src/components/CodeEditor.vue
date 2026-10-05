@@ -42,7 +42,6 @@ onBeforeUnmount(() => {
 <template>
   <div ref="container" class="editor">
     <span class="langname">{{ title }}</span>
-    <!-- <span>{{ language }}</span> -->
   </div>
 </template>
 
