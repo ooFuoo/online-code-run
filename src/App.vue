@@ -1,6 +1,7 @@
 <template>
-  <FileTree :files="files" :activeFileId="activeFileId" @select="activeFileId = $event" @create="handleCreateFile"
-    @delete="handleDeleteFile" @rename="handleRenameFile" />
+  <FileTree :files="files" :children-map="childrenMap" :active-file-id="activeFileId" @select="activeFileId = $event"
+    @create-file="handleCreateFile" @create-folder="handleCreateFolder" @delete="handleDeleteFile"
+    @rename="handleRenameFile" />
 
   <div class="container">
 
@@ -31,22 +32,39 @@ import { useProjectFiles } from './composables/useProjectFiles'
 import { useCodeRunner } from './composables/useCodeRunner'
 
 const previewRef = ref(null)
-const { files, activeFileId, activeFile, htmlFile, cssFile, jsFile, createFile, deleteFile, renameFile } = useProjectFiles()
+const {
+  files,
+  childrenMap,
+  activeFileId,
+  activeFile,
+  htmlFile,
+  cssFile,
+  jsFile,
+  createFile,
+  createFolder,
+  deleteNode,
+  renameNode
+} = useProjectFiles()
 const { Code, consoleList, runCode, handleMessage, clearLogs, addLog } = useCodeRunner({ htmlFile, cssFile, jsFile, previewRef })
 
-function handleCreateFile(name) {
-  const result = createFile(name)
+function handleCreateFile({ name, parentId }) {
+  const result = createFile(name, parentId)
 
   if (!result.success) {
-    alert(result.message)
-    return
+    console.error(result.message)
   }
+}
 
-  addLog('info', result.message)
+function handleCreateFolder({ name, parentId }) {
+  const result = createFolder(name, parentId)
+
+  if (!result.success) {
+    console.error(result.message)
+  }
 }
 
 function handleDeleteFile(id) {
-  const result = deleteFile(id)
+  const result = deleteNode(id)
 
   if (!result.success) {
     alert(result.message)
@@ -57,7 +75,7 @@ function handleDeleteFile(id) {
 }
 
 function handleRenameFile(id, name) {
-  const result = renameFile(id, name)
+  const result = renameNode(id, name)
 
   if (!result.success) {
     alert(result.message)

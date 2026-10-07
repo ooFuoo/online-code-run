@@ -1,7 +1,6 @@
 import { computed, ref, watch } from 'vue'
 import { debounce } from '../utils/debounce'
 import { loadFiles, saveFiles } from '../utils/storage'
-import { pushlog } from './useCodeRunner'
 
 const defaultFiles = [
   {
@@ -96,8 +95,11 @@ function createFolderNode(name, parentId = null) {
 export function useProjectFiles() {
   const storedFiles = loadFiles()
 
-  const files = ref(Array.isArray(storedFiles)
-    ? storedFiles
+  const files = ref(storedFiles?.length
+    ? storedFiles.map(file => ({
+      ...file,
+      parentId: file.parentId ?? null
+    }))
     : defaultFiles
   )
 
@@ -138,10 +140,7 @@ export function useProjectFiles() {
     const success = saveFiles(files.value)
 
     if (!success) {
-      pushlog({
-        level: 'error',
-        args: ['代码保存失败']
-      })
+      console.error('代码保存失败')
     }
   }, 500)
 
@@ -198,7 +197,7 @@ export function useProjectFiles() {
     }
 
     const parent = getNodeByID(parentId)
-    if (parent !== null && parent?.type !== 'folder') {
+    if (parentId !== null && parent?.type !== 'folder') {
       return {
         success: false,
         message: '目标目录不存在'

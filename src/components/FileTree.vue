@@ -1,45 +1,52 @@
 <template>
   <div class="file-tree">
-
-    <!-- 标题栏 -->
     <div class="tree-header">
       <span>PROJECT</span>
-      <button class="add-btn" @click="openCreate">+</button>
+      <div class="header-actions">
+        <button class="add-btn" @click="openCreate(null, 'file')">新建文件</button>
+        <button class="add-btn" @click="openCreate(null, 'folder')">新建文件夹</button>
+      </div>
     </div>
 
-    <!-- 新建文件 -->
     <div v-if="showCreateInput" class="create-box">
-      <input ref="createInputRef" v-model="newFileName" placeholder="文件名，例如 utils.js" @keyup.enter="handleCreate"
-        @keyup.esc="cancelCreate" />
-
+      <input
+        ref="createInputRef"
+        v-model="newFileName"
+        :placeholder="createMode === 'folder' ? '文件夹名称' : '文件名，例如 utils.js'"
+        @keyup.enter="handleCreate"
+        @keyup.esc="cancelCreate"
+      />
       <div class="actions">
         <button @click="handleCreate">创建</button>
         <button @click="cancelCreate">取消</button>
       </div>
-
-      <div v-if="createError" class="error"> {{ createError }} </div>
+      <div v-if="createError" class="error">{{ createError }}</div>
     </div>
 
-    <!-- 文件列表 -->
-    <div v-for="file in files" :key="file.id" class="file-item" :class="{
-      active: file.id === activeFileId
-    }" @click="selectFile(file.id)">
-
-      <span class="file-name">{{ file.name }}</span>
-      <button class="more-btn" @click.stop="toggleMenu(file.id)">⋮</button>
-
-      <!-- 操作菜单 -->
-      <div v-if="menuFileId === file.id" class="file-menu" @click.stop>
-        <button @click="startRename(file)">重命名</button>
-        <button @click="handleDelete(file)"> 删除</button>
-      </div>
+    <div class="tree-list">
+      <FileTreeNode
+        v-for="node in rootNodes"
+        :key="node.id"
+        :node="node"
+        :children-map="childrenMap"
+        :active-file-id="activeFileId"
+        @select="selectFile"
+        @create-file="parentId => openCreate(parentId, 'file')"
+        @create-folder="parentId => openCreate(parentId, 'folder')"
+        @rename="startRename"
+        @delete="handleDeleteById"
+      />
     </div>
 
-    <!-- 重命名 -->
     <div v-if="renameFileData" class="rename-box">
-      <input ref="renameInputRef" v-model="renameName" @keyup.enter="handleRename" @keyup.esc="cancelRename" />
+      <input
+        ref="renameInputRef"
+        v-model="renameName"
+        @keyup.enter="handleRename"
+        @keyup.esc="cancelRename"
+      />
       <div class="actions">
-        <button @click="handleRename"> 确定</button>
+        <button @click="handleRename">确定</button>
         <button @click="cancelRename">取消</button>
       </div>
       <div v-if="renameError" class="error">{{ renameError }}</div>
@@ -48,22 +55,24 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { computed, nextTick, ref } from 'vue'
+import FileTreeNode from './FireTreeNode.vue'
+
 const props = defineProps({
-  files: {
-    type: Array,
-    default: () => []
-  },
-  activeFileId: {
-    type: Number,
-    default: 1
-  }
+  files: { type: Array, default: () => [] },
+  childrenMap: { type: Map, default: () => new Map() },
+  activeFileId: { type: String, default: null }
 })
 
-const emit = defineEmits(['select',
-  'create',
+const emit = defineEmits([
+  'select',
+  'create-file',
+  'create-folder',
   'delete',
-  'rename'])
+  'rename'
+])
+
+const rootNodes = computed(() => props.childrenMap.get(null) ?? [])
 
 function selectFile(id) {
   emit('select', id)
@@ -72,85 +81,69 @@ function selectFile(id) {
 const showCreateInput = ref(false)
 const newFileName = ref('')
 const createError = ref('')
-
+const createParentId = ref(null)
+const createMode = ref('file')
 const createInputRef = ref(null)
 
-async function openCreate() {
+async function openCreate(parentId = null, mode = 'file') {
+  createParentId.value = parentId
+  createMode.value = mode
   showCreateInput.value = true
-
   await nextTick()
-
   createInputRef.value?.focus()
 }
 
 function handleCreate() {
-  createError.value = ''
-
   const name = newFileName.value.trim()
-
   if (!name) {
     createError.value = '请输入文件名'
     return
   }
 
-  emit('create', name)
-
-  newFileName.value = ''
-  showCreateInput.value = false
+  emit(createMode.value === 'folder' ? 'create-folder' : 'create-file', {
+    name,
+    parentId: createParentId.value
+  })
+  cancelCreate()
 }
 
 function cancelCreate() {
   newFileName.value = ''
   createError.value = ''
+  createParentId.value = null
+  createMode.value = 'file'
   showCreateInput.value = false
 }
 
-// 文件菜单
-const menuFileId = ref(null)
-
-function toggleMenu(id) {
-  menuFileId.value =
-    menuFileId.value === id ? null : id
-}
-
-// 删除文件
-function handleDelete(file) {
-  const confirmed = window.confirm(
-    `确定删除 ${file.name} 吗？`
-  )
-  if (!confirmed) {
-    return
+function handleDeleteById(id) {
+  const node = props.files.find(file => file.id === id)
+  if (node && window.confirm(`确定删除 ${node.name} 吗？`)) {
+    emit('delete', id)
   }
-  emit('delete', file.id)
-  menuFileId.value = null
 }
 
-// 重命名
 const renameFileData = ref(null)
 const renameName = ref('')
 const renameError = ref('')
-
 const renameInputRef = ref(null)
 
-async function startRename(file) {
-  renameFileData.value = file
-  renameName.value = file.name
+async function startRename(node) {
+  renameFileData.value = node
+  renameName.value = node.name
   renameError.value = ''
-  menuFileId.value = null
   await nextTick()
   renameInputRef.value?.focus()
 }
 
 function handleRename() {
-  renameError.value = ''
   const name = renameName.value.trim()
   if (!name) {
-    renameError.value = '请输入文件名'
+    renameError.value = '请输入名称'
     return
   }
+
   emit('rename', renameFileData.value.id, name)
-  renameFileData.value = null
-  renameName.value = ''
+  cancelRename()
 }
 
 function cancelRename() {
@@ -158,25 +151,14 @@ function cancelRename() {
   renameName.value = ''
   renameError.value = ''
 }
-
 </script>
 
 <style scoped>
-.file-tree {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 12px 0;
-}
-
-.file-item {
-  padding: 6px 10px;
-  cursor: pointer;
-  border: 1px solid transparent;
-}
-
-.file-item.active {
-  border-color: #333;
-  background: #e7e9ff;
-}
+.file-tree { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px 0; }
+.tree-header { display: flex; align-items: center; justify-content: space-between; }
+.header-actions { display: flex; gap: 4px; }
+.add-btn { cursor: pointer; }
+.tree-list { display: flex; flex-direction: column; }
+.actions { display: flex; gap: 4px; }
+.error { color: #c00; }
 </style>
