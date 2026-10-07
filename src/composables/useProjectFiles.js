@@ -1,19 +1,24 @@
 import { computed, ref, watch } from 'vue'
 import { debounce } from '../utils/debounce'
 import { loadFiles, saveFiles } from '../utils/storage'
+import { pushlog } from './useCodeRunner'
 
-const defaultFiles = ref([
+const defaultFiles = [
   {
-    id: 1,
+    id: createID(),
     name: 'index.html',
+    type: 'file',
+    parentId: null,
     language: 'html',
     content: `<h2>默认标签样式页面</h2>
     <h1 id="title">Hello World</h1>
     <div class="contain">盒子one</div>`,
   },
   {
-    id: 2,
+    id: createID(),
     name: 'style.css',
+    type: 'file',
+    parentId: null,
     language: 'css',
     content: `#title {
                     color: red;
@@ -25,8 +30,10 @@ const defaultFiles = ref([
                 }`,
   },
   {
-    id: 3,
+    id: createID(),
     name: 'script.js',
+    type: 'file',
+    parentId: null,
     language: 'javascript',
     content: ` console.log("默认打印")
                 console.log('Hello Console')
@@ -41,21 +48,49 @@ const defaultFiles = ref([
                   alert('点击成功！')
                 }
                   }
-
   `,
   }
-])
+]
 
-function getLanguage(fileNmae) {
-  const ext = fileNmae.split('.').pop()?.toLowerCase()
+function createID() {
+  return crypto.randomUUID()
+}
+
+// 获取文件语言后缀
+function getLanguage(fileName) {
+  const ext = fileName.split('.').pop()?.toLowerCase()
   const languageMap = {
     html: 'html',
-    css: 'css', 
+    css: 'css',
     js: 'javascript',
     ts: 'typescript',
     json: 'json'
   }
   return languageMap[ext] ?? 'plaintext'
+}
+
+// 创建文件节点
+function createFileNode(name, parentId = null) {
+  name = name.trim()
+  return {
+    id: createID(),
+    name: name,
+    type: 'file',
+    parentId: parentId,
+    language: getLanguage(name),
+    content: ''
+  }
+}
+
+// 创建文件夹节点
+function createFolderNode(name, parentId = null) {
+  name = name.trim()
+  return {
+    id: createID(),
+    name: name,
+    type: 'folder',
+    parentId: parentId,
+  }
 }
 
 export function useProjectFiles() {
@@ -66,11 +101,26 @@ export function useProjectFiles() {
     : defaultFiles
   )
 
+  // 找到激活文件，兜底第一个？？null
   const activeFileId = ref(files.value[0]?.id ?? null)
 
   const activeFile = computed(() => {
-    return files.value.find(file => file.id === activeFileId.value)
-      ?? files.value[0]
+    return files.value.find(
+      file => file.id === activeFileId.value && file.type === 'file')
+      ?? files.value.find(file => file.type === 'file')
+      ?? null
+  })
+
+  const childrenMap = computed(() => {
+    const map = new Map()
+    for (const file of files.value) {
+      const parentId = file.parentId
+      if (!map.has(parentId)) {
+        map.set(parentId, [])
+      }
+      map.get(parentId).push(file)
+    }
+    return map
   })
 
   const htmlFile = computed(() => files.value.find(
@@ -100,7 +150,45 @@ export function useProjectFiles() {
   }, { deep: true })
 
 
-  function createFile(fileNmae) {
+  // 11再增加“根据 ID 找节点”
+  function getNodeByID(id) {
+    return files.value.find(
+      item => item.id === id
+    ) ?? null
+  }
+
+  // 22获取某个目录下的直接子节点
+  function getChildren(parentId = null) {
+    return childrenMap.value.get(parentId) ?? []
+  }
+
+  // 33获取某个节点下面所有后代节点 ID
+  function getDescendantIds(id) {
+    const visited = new Set([id])
+    const stack = [id]
+    const result = []
+    while (stack.length) {
+      const currentID = stack.pop()
+      const children = childrenMap.value.get(currentID)
+      if (!children) {
+        continue
+      }
+      for (const child of children) {
+        if (visited.has(child.id)) {
+          continue
+        }
+        visited.add(child.id)
+        result.push(child.id)
+        if (child.type === 'folder') {
+          stack.push(child.id)
+        }
+      }
+    }
+    return result
+  }
+
+  // 1.创建文件
+  function createFile(fileNmae, parentId = null) {
     const name = fileNmae.trim()
     if (!name) {
       return {
@@ -109,104 +197,161 @@ export function useProjectFiles() {
       }
     }
 
-    const exists = files.value.some(file => file.name === name)
+    const parent = getNodeByID(parentId)
+    if (parent !== null && parent?.type !== 'folder') {
+      return {
+        success: false,
+        message: '目标目录不存在'
+      }
+    }
+    const exists = files.value.some(file => file.name === name && file.parentId === parentId)
 
     if (exists) {
       return {
         success: false,
-        message: "文件名不能重复"
+        message: "当前目录下名称不能重复"
       }
     }
 
-    const newFile = {
-      id: Date.now(),
-      name: name,
-      language: getLanguage(name),
-      content: ''
-    }
+    const newFile = createFileNode(name, parentId)
 
     files.value.push(newFile)
     activeFileId.value = newFile.id
 
     return {
       success: true,
-      message: "文件创建成功"
+      message: "文件创建成功",
+      node: newFile
     }
   }
 
-  function deleteFile(id) {
-    const index = files.value.findIndex(
-      file => file.id === id
-    )
-
-    if (index === -1) {
+  // 2.创建文件夹
+  function createFolder(folderName, parentId = null) {
+    const name = folderName.trim()
+    if (!name) {
       return {
         success: false,
-        message: '该文件不存在'
+        message: '文件夹名称不能为空'
+      }
+    }
+    const parent = getNodeByID(parentId)
+    if (parentId !== null && parent?.type !== 'folder') {
+      return {
+        success: false,
+        message: '目标目录不存在'
+      }
+    }
+    const exists = files.value.some(
+      file =>
+        file.parentId === parentId &&
+        file.name === name
+    )
+
+    if (exists) {
+      return {
+        success: false,
+        message: '当前目录下名称不能重复'
       }
     }
 
-    const isActive = activeFileId.value === id
-    files.value.splice(index, 1)
+    const newFolder = createFolderNode(name, parentId)
 
-    if (isActive) {
-      const nextFile = files.value[index] ?? files.value[index - 1] ?? files.value[0]
-      activeFileId.value = nextFile?.id ?? null
-    }
+    files.value.push(newFolder)
+
     return {
       success: true,
-      message: '文件删除成功'
+      message: '文件夹创建成功',
+      node: newFolder
     }
   }
 
-  function renameFile(id, newName) {
+  // 3.删除节点
+  function deleteNode(id) {
+    const node = getNodeByID(id)
+    if (!node) {
+      return {
+        success: false,
+        message: '待删除文件节点不存在'
+      }
+    }
+
+    const deleteIds = new Set([id, ...getDescendantIds(id)])
+    const wasActive = deleteIds.has(activeFileId.value)
+
+    files.value = files.value.filter(f => !deleteIds.has(f.id))
+
+    if (wasActive) {
+      const nextFile = files.value.find(file => file.type === 'file') ?? null
+      activeFileId.value = nextFile?.id ?? null
+    }
+
+    return {
+      success: true,
+      message: node.type === 'folder' ? '文件夹删除成功' : '文件删除成功'
+    }
+  }
+
+  // 4.重名名文件
+  function renameNode(id, newName) {
     // 新名去空格，判断是否存在，有值，有重名
     const name = newName.trim()
     if (!name) {
       return {
         success: false,
-        message: '文件名不能为空'
+        message: '名称不能为空'
       }
     }
-    const oldFile = files.value.find(
-      file => file.id === id
-    )
-    if (!oldFile) {
+
+    const node = getNodeByID(id)
+
+    if (!node) {
       return {
         success: false,
-        message: "该文件不存在"
+        message: "该节点不存在"
       }
     }
-    const exist = files.value.some(
-      file => file.id !== id && file.name === name
-    )
+    const exist = getChildren(node.parentId).some(file => file.id !== id && file.name === name)
+
     if (exist) {
       return {
         success: false,
-        message: "该文件名已经存在"
+        message: "当前目录下名称不能重复"
       }
     }
-    oldFile.name = name
-    oldFile.language = getLanguage(name)
+    const oldName = node.name
+    node.name = name
+    if (node.type === 'file') {
+      node.language = getLanguage(name)
+    }
 
     return {
       success: true,
-      oldFile
+      message: '重命名成功',
+      oldName,
+      node
+
     }
   }
 
-
   return {
     files,
+    childrenMap,
+
     activeFileId,
     activeFile,
+
     htmlFile,
     cssFile,
     jsFile,
 
+    getNodeByID,
+    getChildren,
+    getDescendantIds,
+
     createFile,
-    deleteFile,
-    renameFile
+    createFolder,
+    deleteNode,
+    renameNode
   }
 }
 
